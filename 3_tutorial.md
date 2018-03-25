@@ -11,18 +11,18 @@ output: html_document
 
 If you are a ruby developer, you have probably heard of or used Rails, a very popular ruby web framework to build web applications. Most companies require that their application data is stored in a way that it can be easily and securely stored, retrieved, and analyzed at scale and in which cases the application server hosting our rails application is not sufficient. In this case we need to opt for other alternatives like object storage where data is stored as objects. AWS S3 is object storage designed to store and retrieve data from any platform like our rails application. 
 
-Before we deploy our application, we need to have some usability tests to ensure that our application works as required but also automate the last mile to deployment which is to ensure that for every commit,there is an automated pipeline to run all tests against the commit and report the status of the application with this commit update which is the goal of continous integration. We can go beyond this and create automation to deploy all commits that pass all tests a practice called continous deployment. There are many tools we can use to implement continous integeration but for purposes of this tutorial I will discuss how to achieve the same with an  CI tool called semaphore.
+Before we deploy our application, we need to have some usability tests to ensure that our application works as required but also automate the last mile to deployment which is to ensure that for every commit,there is an automated pipeline to run all tests against the commit and report the status of the application with this commit update which is the goal of continous integration. We can go beyond this and create automation to deploy all commits that pass all tests a practice called continous deployment. There are many tools we can use to implement continous integeration but for purposes of this tutorial I will discuss how to achieve the same with an online CI service called semaphore.
 
 ## Before we get started
 
-Grab all the tools you may need to follow along this tutorial. If you do not yet have one of these and please follow the relevant guides to install.
+Grab all the tools you may need to follow along this tutorial. If you do not yet have one of the following, please follow the relevant guides to install.
 
 + [Ruby on Rails](http://installrails.com/)
 + A text editor of your choice like [sublime](https://www.sublimetext.com/3), [Atom](https://atom.io/) etc
 
 ### Setup AWS Account
 
-To upload our artifacts to AWS S3, you will need to create an account with Amazon and get your credenatisls that we shall use for authentication. The credentails you need to take note of are:
+To upload our artifacts to AWS S3, you will need to create an account with Amazon and get your credentials that we shall use for authentication. The credentails you need to take note of are:
 
 + AWS access key ID
 + AWS secret access key
@@ -30,11 +30,11 @@ To upload our artifacts to AWS S3, you will need to create an account with Amazo
 
 ### Setup a Semaphore Account
 
-Create an account on semaphore where we shall host our project on which we shall run tests on every commit for sanity checks.
+Create an account on semaphore where we shall host our project for continous intergration. 
 
 ## Uploading a file to AWS S3 with Rails
 
-We are going to create a rails application that will have a feature of uploading a file of any type to AWS. We will make use pf the aws-sdk gem for this but before we do, lets create a new application
+We are going to create a rails application that will have a feature of uploading a file of any type to AWS. We will make use of the aws-sdk gem for this but before we do, lets create a new application
 
 ```rails new aws_upload```
 
@@ -42,8 +42,10 @@ We are going to create a rails application that will have a feature of uploading
 
 Edit the Gemfile and add the aws gem to it.
 
-```# Gemfile
-gem 'aws-sdk' ```
+```
+# Gemfile
+gem 'aws-sdk' 
+```
 
 Run bundle install 
 
@@ -70,7 +72,7 @@ test:
     secret_access_key: "secret"
 ```
 
-This is a sample config. Use your specific AWS credentials. It is also recommended that you have separate configurations for different environments. Now create another file config.rb in the folder config/initializers and it shouls have logic to load our created configuration file.
+This is a sample config. Use your specific AWS credentials. It is also recommended that you have separate configurations for different environments. Now create another file config.rb in the folder config/initializers and it should have logic to load our created configuration file.
 
 config.rb
 
@@ -116,7 +118,7 @@ end
 ```
 By placing this logic in a file under the lib folder,rails will autoload our library and we don’t need to write a separate require for it. 
 
-let’s start by creat an  Artifact model with file field:
+let’s start by creating an  Artifact model with file field:
 
 ```
 
@@ -125,7 +127,7 @@ $ rake db:migrate
 
 ```
 
-We have now to presign the request in the control.
+We now have to presign the request in the control.
 
 ```
 class UsersController < ApplicationController
@@ -139,15 +141,17 @@ end
 
 Add this to config/routes.rb
 
+```
 resources :users do
   collection do
     put :presign_upload
   end
 end
+```
 
 Now let us implement the presigner class to work with s3.
 
-# app/services/s3_presigner.rb
+app/services/s3_presigner.rb
 
 ```
 class UploadPresigner
@@ -175,10 +179,9 @@ This makes a request to AWS S3 API and returns presigned URL with token, which w
 
 Now let us create a form to take the file from the browser.
 
-# app/views/artifacts/_form.html.erb
+app/views/artifacts/_form.html.erb
 
 ```
-
 <div class="field">
   <%= f.label :file %><br>
   <%= f.hidden_field :avatar, class: "js-signed-upload-value" %>
@@ -191,13 +194,11 @@ Now let us create a form to take the file from the browser.
     <% end %>
   </p>
 </div>
-
-
 ```
 
 Add the necessary Joavascript to achieve the above.
 
-# app/assets/javascripts/users.coffee
+app/assets/javascripts/users.coffee
 
 ```
 uploadWithUrl = (form, file, presignedUrl, publicUrl) ->
@@ -248,7 +249,7 @@ $ ->
 
 ```
 
-Now when the page is ready, start rails server and open the /users/new in your browser. Enter some name and choose an avatar. After you submit the form, controller will redirect you to the show action. Let’s improve it a bit to display the link to attachment:
+Now when the page is ready, start rails server and open the /artifacts/new in your browser. Enter some name and choose a file. After you submit the form, controller will redirect you to the show action. Let’s improve it a bit to display the link to attachment:
 
 # app/views/artifacts/show.html.erb
 [...]
@@ -262,11 +263,9 @@ Now when the page is ready, start rails server and open the /users/new in your b
 
 Now all user uploads in your app are processed directly to AWS S3, without causing any extra load on the backend.
 
-
 ## Testing the Application with Cucumber
 
 we're using Cucumber as a tool for writing our acceptance tests. The workflow of implementing acceptance tests is follows;
-
 
 + Write your acceptance test
 + See it fail so you know what the next step is
@@ -277,7 +276,8 @@ we're using Cucumber as a tool for writing our acceptance tests. The workflow of
 
 Now let us first create a cucumber feature for our application.
 
-# feature/aws_cucumber.feature
+feature/aws_cucumber.feature
+```
 Feature: AWS index
 As a product manager
 I want our users to be greeted when they visit our site
@@ -286,11 +286,12 @@ So that they have a better experience
 Scenario: User sees the welcome message
 When I go to the homepage
 Then I should see the welcome message
+```
 
 Next we write the ruby code to execute each step in the above feature description.
 
-# feature/aws_steps.rb
-
+feature/aws_steps.rb
+```
 When(/^I go to the homepage$/) do
   visit root_path
 end
@@ -298,22 +299,28 @@ end
 Then(/^I should see the welcome message$/) do
   expect(page).to have_content("Welcome to AWS file upload")
 end
+```
 
 There are many scenarios we can implement to test our application. This is just a simple example.
 
 Now point the routes to the new controller.
 
-# config/routes.rb
+config/routes.rb
+```
 Rails.application.routes.draw do
   root 'artifact#new'
 end
+```
 
 Run the tests
 
+```
 $ cucumber -s
+```
 
 You should have an output like this :
 
+```
 Using the default profile…
 Feature: Hello Cucumber
 
@@ -324,39 +331,41 @@ Feature: Hello Cucumber
 1 scenario (1 passed)
 2 steps (2 passed)
 0m0.168s
-
+```
 Ensure you implement the features required to successfully pass the tests.
 
 ## Continous Integration with Semaphore
 
 Create a repository on either github or bitbucket and push the changes to it. The next step is for us to add this remote repository to semaphore. Login to semaphore and click start project:
 
-![alt text](images/sem1.png "Create project")
+![Alt](images/sem1.png "screen shot")
 
 Select where your project is hosted either github or bitbucket.
 
-![alt text](images/sem2.png "Create project")
+![Alt](images/sem2.png "screen shot")
 
 Choose the project you pushed.
 
-![alt text](images/sem3.png "Create project")
+![Alt](images/sem3.png "screen shot")
 
 Choose what branch you want to do CI on.
 
-![alt text](images/sem4.png "Create project")
+![Alt](images/sem4.png "screen shot")
 
 You can now add any commands that the semaphore CI should run
 
-![alt text](images/sem6.png "Create project")
+![Alt](images/sem6.png "screen shot")
 
-This case just add.
+In this case just add.
 
+```
 cucumber -s 
+```
 
 In addition to the default.
 
 Semaphore will then build your branch on every commit.
 
-![alt text](images/sem9.png "Create project")
+![Alt](images/sem9.png "screen shot")
 
 
